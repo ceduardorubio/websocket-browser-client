@@ -1,0 +1,26 @@
+{
+  "name": "web-socket-browser-connector",
+  "version": "1.0.0",
+  "description": "Browser library to connect to a web socket connector server ",
+  "main": "index.js",
+  "types":"dist/index.d.ts",
+  "scripts": {
+    "tsc": "rm -rf ./dist; tsc"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  
+  "keywords": [
+    "web",
+    "socket",
+    "browser",
+    "connection"
+  ],
+  "author": "carlos velásquez rubio",
+  "license": "MIT"
+}
