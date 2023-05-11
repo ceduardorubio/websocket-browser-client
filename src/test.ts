@@ -20,11 +20,12 @@ export interface NewUserResponse{
 let authCredentials:Credentials = {
     email   : 'email',
     password: 'p45$.vv.0r6',
+    //... your credentials
 }
 
 export interface SessionData {
     token:string;
-    //...
+    //... your session data
 }
 
 let config:SocketConnectorOptions = {
