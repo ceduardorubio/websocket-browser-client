@@ -1,237 +1,235 @@
-import { SocketFn, SocketListeners, SocketPackage, SocketPackageData, SocketPackageInfo, SocketPackageResponse, SocketServerCallsStack } from "./types";
+import { SocketAction, SocketConnector, SocketConnectorOptions, SocketFn, SocketListeners, SocketPackage, SocketPackageInfo, SocketPackageResponse, SocketServerCallsStack, WebSocketClientFn, WebSocketResponse } from "./types";
 
-export const CreateBrowserClientSocket = (url:string,onError:(data:any) => void = console.log) => {
-    let webSocket:WebSocket                   = null
-    let packageID:number                      = 0;
-    let session  :SocketPackageData | null    = null;
-    let calls    :SocketServerCallsStack      = {};
-    let listeners:SocketListeners             = {};
-    let mainAuthData:SocketPackageData | null = null;
-    let authFailed:boolean                    = false;
-    let onLogin: SocketFn |null               = null
+export const WebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:SocketConnectorOptions = null) => {
+    
+    let webSocket          :WebSocket                = null
+    let packageID          :number                   = 0;
+    let session            :S                     = null;
+    let onServerResponse   :SocketServerCallsStack   = {};
+    let broadcastListeners :SocketListeners          = {};
 
+    let authCredentials              :any  = null;
+    let onAuthenticationResponse     :SocketFn |null           = null
+    let url                          :string                   = null;
+    let reconnect                    :boolean                  = true;
+    let hasBeingConnectedBefore      :boolean                  = false;
 
-    const Connect = (t:number = 2_000) => {
-        if(authFailed ) return;
+    let onConnectionErrorReconnect   :boolean                             = true;
+    let authCallbackOnReconnect      :boolean                             = true;
+    let reconnectionTimeout          :number                              = 2_000;
+    let onError                      :(error: any, data: any) => void = console.log;
 
-        setTimeout(() => {
-          console.log('reconnecting...');
-          try {
-              if(webSocket != null){
-                webSocket.onclose = () => {};
-                webSocket.onerror = () => {};
-                webSocket.onopen  = () => {};
-                webSocket.onmessage = () => {};
-                webSocket.close();
-              }
-              webSocket = new WebSocket(url);
-              packageID  = 0;
-              session    = null;
-              calls      = {};
-              listeners  = {};
-              AppendListeners();
-          } catch(e){
-              console.log('error reconnecting...');
-              console.log(e);
-          }
-      },t);
+    if(connectionOptions){
+        onConnectionErrorReconnect = connectionOptions.onConnectionErrorReconnect || onConnectionErrorReconnect;
+        authCallbackOnReconnect    = connectionOptions.authCallbackOnReconnect    || authCallbackOnReconnect;
+        reconnectionTimeout        = connectionOptions.reconnectionTimeout        || reconnectionTimeout;
+        onError                    = connectionOptions.onError                    || onError;
     }
 
 
-    const AuthLoginServer = (cb:SocketFn) => {
-        let info: SocketPackageInfo = {
-            action   : 'auth',
-            request  : 'login',
-            group    : '',
-            packageID: packageID
-        }
-        let obj:SocketPackage = {
-            data:mainAuthData,
-            info:info
-        }
-        calls[packageID] = cb;
-        webSocket.send(JSON.stringify(obj));
-        packageID++;
-    }
-
-    const AppendListeners = () =>{
-        webSocket.onerror =  e => {
-            onError(e);
-            setTimeout(() => { Connect(); }, 2_000);
-            webSocket.close();
-        };
-        webSocket.onclose = e => {
-            console.log('error...');
-            onError(e);
-            setTimeout(() => { Connect(); }, 2_000);
-            webSocket.close();
-        };
-        webSocket.onopen =  () => {
-            AuthLoginServer((error,sessionData) => {
-                if(error){
-                    session = null;
-                    authFailed = true;
-                    onLogin(error,{});
-
-                } else {
-                    session = sessionData;
-                    onLogin(null,sessionData);
+    const ReloadConnection = (reconnectionWait:number = reconnectionTimeout) => {
+        if(!reconnect ) {
+            onError('auth failed',null);
+        } else {
+            setTimeout(() => {
+                try {
+                    ClearWebSocket();
+                    StartSocket();                
+                } catch(e){
+                    onError('connection error',e);
                 }
-            });
-        };
-        webSocket.onmessage = function incoming(xMsg) {
-            let incomingData:string = xMsg.data;
-            try {
-                let r:SocketPackageResponse = JSON.parse(incomingData);
-                let { info,error,response } = r;
-                if(info.action == "broadcast"){
-                    let { request } = info;
-                    if(listeners[request]) listeners[request].forEach(fn => fn(error,response));
+            },reconnectionWait);
+        }
+    }
+
+    const ResetControllers = () => {
+        packageID          = 0;
+        session            = null;
+        onServerResponse   = {};
+        broadcastListeners = {};
+    }
+
+    const StartSocket = () => {
+        ResetControllers();
+        webSocket          = new WebSocket(url);
+        webSocket.onerror   = onConnError;
+        webSocket.onclose   = onConnError ;
+        webSocket.onopen    = onConnOpen;
+        webSocket.onmessage = onConnMessage;
+    }
+
+    const ClearWebSocket = () => {
+        if(webSocket) return; 
+        webSocket.onclose   = () => {};
+        webSocket.onerror   = () => {};
+        webSocket.onopen    = () => {};
+        webSocket.onmessage = () => {};
+        webSocket.close();
+        webSocket = null;
+    }
+
+    const onConnError = (e:any) => {
+        onError('connection lost error',e);
+        if (onConnectionErrorReconnect) ReloadConnection();
+    }
+
+    const onConnMessage = (xMsg:any) => {
+        let packageResponse:SocketPackageResponse = null;
+        try {
+            packageResponse = JSON.parse(xMsg.data);
+        } catch (e) {
+            return onError( 'invalid incoming data: ', xMsg.data);
+        }
+        HandleServerMessage(packageResponse);
+    }
+
+    const onConnOpen = () => {
+        Send<S>('auth','login',null,authCredentials,(error,sessionData) => {
+            if(error){
+                session   = null;
+                reconnect = false;
+                onAuthenticationResponse(error,null);
+            } else {
+                session = sessionData;
+                if (hasBeingConnectedBefore) {
+                    if (authCallbackOnReconnect) onAuthenticationResponse(null,sessionData);
                 } else {
-                    if(info.action == "call" || info.action == "group" || info.action == "auth"){
-                        let { packageID } = info;
-                        if(calls[packageID]){
-                            calls[packageID](error,response);
-                            delete calls[packageID];
-                        }
-                    }
+                    onAuthenticationResponse(null,sessionData);
+                    hasBeingConnectedBefore = true;
                 }
-            } catch (e) {
-                onError( 'invalid data: ' + incomingData);
             }
-        };
+        });
     }
 
-    const MakeRequest = (request:string | number,data:SocketPackageData,cb:SocketFn) => {
-        if(session){
-            let info: SocketPackageInfo = {
-                action   : 'call',
-                request  : request,
-                group    : '',
-                packageID: packageID
+    const HandleServerMessage = (r:SocketPackageResponse) => {
+        let { info,error,response } = r;
+        if(info.action == "broadcast"){
+            let { request } = info;
+            if(broadcastListeners[request]) {
+                let listeners = broadcastListeners[request];
+                listeners.forEach(fn => fn(error,response));
             }
-            let obj:SocketPackage = {
-                data:data,
-                info:info
-            }
-            calls[packageID] = cb;
-            webSocket.send(JSON.stringify(obj));
-            packageID++;
         } else {
-            cb('not authenticated',{});
+            let isServerResponse = info.action == "call" || info.action == "group" || info.action == "auth"
+            if(isServerResponse){
+                let { packageID } = info;
+                if(onServerResponse[packageID]){
+                    let onResponseToPackage = onServerResponse[packageID];
+                    onResponseToPackage(error,response);
+                    delete onServerResponse[packageID];
+                }
+            }
         }
     }
 
-    const JoinGroup = (group:string,cb:SocketFn) => {
+    const Send = <T = WebSocketResponse> (action:SocketAction,request:string | number,group:string = '',data:any = null,cbOnResponse:(error: any, response: T) => void  = null) => {
         if(session){
-            let info: SocketPackageInfo = {
-                action   : 'group',
-                request  : 'join',
-                group    : group,
-                packageID: packageID
+            let info: SocketPackageInfo = { action,request,group,packageID } ;
+            let body:SocketPackage      = { info, data}
+            if(cbOnResponse) {
+                onServerResponse[packageID] = cbOnResponse;
+                packageID++;
             }
-            let obj:SocketPackage = {
-                data:{},
-                info:info
-            }
-            calls[packageID] = cb;
-            webSocket.send(JSON.stringify(obj));
-            packageID++;
+            webSocket.send(JSON.stringify(body));
         } else {
-            cb('not authenticated',{});
+            cbOnResponse('not authenticated',null);
         }
     }
 
-    const LeaveGroup = (group:string,cb:SocketFn) => {
-        if(session){
-            let info: SocketPackageInfo = {
-                action   : 'group',
-                request  : 'leave',
-                group    : group,
-                packageID: packageID
-            }
-            let obj:SocketPackage = {
-                data:{},
-                info:info
-            }
-            calls[packageID] = cb;
-            webSocket.send(JSON.stringify(obj));
-            packageID++;
-        } else {
-            cb('not authenticated',{});
+    const echo = <T = any>(data:T,cb:(error: any, response: {echoAt:number,received:T}) => void = null) => {
+        Send<{echoAt:number,received:T}>('call','echo',null,data,cb);
+    }
+
+    const request = <T = any>(request:string | number,data:any,cb:(error: any, response: T) => void = null) => {
+        Send('call',request,null,data,cb);
+    }
+
+    const joinGroup = (group:string,cb:(error: any, response: WebSocketResponse) => void) => {
+        Send('group','join',group,null,cb);
+    }
+
+    const leaveGroup = (group:string,cb:(error: any, response: WebSocketResponse) => void) => {
+        Send('group','leave',group,null,cb);
+    }
+
+    const leaveAllGroups = (cb:(error: any, response: WebSocketResponse) => void) => {
+        Send('group','leaveAll',null,null,cb);
+    }
+
+    const onBroadcast = <T = any>(name:string,cb:(error: any, response: T) => void) => {
+        if(!broadcastListeners[name]) broadcastListeners[name] = [];
+        broadcastListeners[name].push(cb);
+    }
+
+    const logout = (cb:SocketFn) => {
+        reconnect = false;
+        Send('auth','logout',null,null,(error,response) => {
+            close();
+            cb(error,response);
+        });
+    }
+
+    const close = () => {
+        reconnect = false;
+        ClearWebSocket();
+        ResetControllers();
+    }
+
+    const connect = <T = any>(websocketServerURL:string,newAuthCredentials:T,authResponseCallback:(error: any, response: S) => void) => {
+        let u = websocketServerURL;
+        if(u.startsWith('http://'))  u = u.replace('http://','ws://')
+        if(u.startsWith('https://')) u = u.replace('https://','wss://')
+        if(!u.startsWith('ws://') && !u.startsWith('wss://')) u = 'ws://' + u;
+        url                      = u;
+        reconnect                = true;
+        authCredentials          = newAuthCredentials;
+        hasBeingConnectedBefore  = false;
+        onAuthenticationResponse = authResponseCallback;
+        ReloadConnection(1);
+    }
+
+    let result: SocketConnector<S> = {
+        request,
+        joinGroup,
+        leaveGroup,
+        leaveAllGroups,
+
+        onBroadcast,
+        logout,
+        connect,
+        close,
+        echo,
+        get onConnectionErrorReconnect() : boolean {
+            return onConnectionErrorReconnect
+        },
+        set onConnectionErrorReconnect(v : boolean) {
+            onConnectionErrorReconnect = v;
+        },
+        get reconnectionTimeout() : number {
+            return reconnectionTimeout
+        },
+        set reconnectionTimeout(v : number) {
+            reconnectionTimeout = v;
+        },
+        get authCallbackOnReconnect() : boolean {
+            return authCallbackOnReconnect
+        },
+        set authCallbackOnReconnect(v : boolean) {
+            authCallbackOnReconnect = v;
+        },
+        get onError() : (error: any, data: any) => void {
+            return onError
+        },
+        set onError(v : (error: any, data: any) => void) {
+            onError = v;
+        },
+        get sessionData() : S {
+            return session
+        },
+        set sessionData(v : S) {
+            //session = v;
         }
-    }
-
-    const LeaveAllGroups = (cb:SocketFn) => {
-        if(session){
-            let info: SocketPackageInfo = {
-                action: 'group',
-                request: 'leaveAll',
-                group: '',
-                packageID: packageID
-            }
-            let obj:SocketPackage = {
-                data:{},
-                info:info
-            }
-            calls[packageID] = cb;
-            webSocket.send(JSON.stringify(obj));
-            packageID++;
-        } else {
-            cb('not authenticated',{});
-        }
-    }
-
-    const On = (name:string,cb:SocketFn) => {
-        if(!listeners[name]) listeners[name] = [];
-        listeners[name].push(cb);
-    }
-
-    const Logout = (cb:SocketFn) => {
-        authFailed = true;
-        let info: SocketPackageInfo = {
-            action   : 'auth',
-            request  : 'logout',
-            group    : '',
-            packageID: packageID
-        }
-        let obj:SocketPackage = {
-            data:{},
-            info:info
-        }
-        calls[packageID] = cb;
-        webSocket.send(JSON.stringify(obj));
-        packageID++;
-    }
-
-    const ConnectAndAuthenticate = (newAuthData:SocketPackageData,newOnLogin:SocketFn) => {
-      authFailed = false;
-      mainAuthData = newAuthData;
-      onLogin = newOnLogin;
-      Connect(1);
-    }
-
-
-    let result: SocketConnector = {
-      MakeRequest,
-      JoinGroup,
-      LeaveGroup,
-      LeaveAllGroups,
-      On,
-      Logout,
-      ConnectAndAuthenticate
     }
 
     return result
-}
-
-export interface SocketConnector {
-
-    MakeRequest(request:string | number,data:SocketPackageData,cb:SocketFn):void;
-    JoinGroup(group:string,cb:SocketFn):void;
-    LeaveGroup(group:string,cb:SocketFn):void;
-    LeaveAllGroups(cb:SocketFn):void;
-    On(name:string,cb:SocketFn):void;
-    Logout(cb:SocketFn):void;
-    ConnectAndAuthenticate(newAuthData:SocketPackageData,newOnLogin:SocketFn):void;
 }
