@@ -1,7 +1,7 @@
 import { WebSocketClient } from ".";
-import { SocketConnector } from "./types";
+import { SocketConnector,SocketConnectorOptions } from "./types";
 
-let websocketClient:SocketConnector<User>     = WebSocketClient<User>();
+
 let globalUsers: User[] = [];
 export interface User {
     username:string;
@@ -9,14 +9,40 @@ export interface User {
 }
 
 export interface Credentials {
-    username:string;
     email:string;
+    password:string;
+}
+
+export interface NewUserResponse{
+    done:boolean;
 }
 
 let authCredentials:Credentials = {
-    username:'username',
-    email:'email',
+    email   : 'email',
+    password: 'p45$.vv.0r6',
 }
+
+export interface SessionData {
+    token:string;
+    //...
+}
+
+let config:SocketConnectorOptions = {
+    onConnectionErrorReconnect: true,
+    authCallbackOnReconnect   : true,
+    reconnectionTimeout       : 1000,
+}
+
+let websocketClient = WebSocketClient<SessionData>(config);
+
+websocketClient.onConnectionErrorReconnect = true;
+websocketClient.reconnectionTimeout        = 1000;
+websocketClient.authCallbackOnReconnect    = true;
+
+websocketClient.onError = (error,data) => {
+    console.log('Error:',error);
+    console.log('Data:',data);
+};
 
 websocketClient.connect<Credentials>('ws://localhost:8080',authCredentials,(error,sessionData) => {
     if(error) {
@@ -35,7 +61,6 @@ websocketClient.connect<Credentials>('ws://localhost:8080',authCredentials,(erro
 
     }
 });
-
 
 websocketClient.echo('Hello World',(error,response) => {
     if(error) {
@@ -95,34 +120,25 @@ websocketClient.logout((error,response) => {
     }
 });
 
-
-
-websocketClient.onConnectionErrorReconnect = true;
-
-websocketClient.reconnectionTimeout = 1000;
-
-websocketClient.authCallbackOnReconnect = true;
-
-websocketClient.onError = (error,data) => {
-    console.log('Error:',error);
-    console.log('Data:',data);
-};
-
 let btnNewUser = document.getElementById('btn-new-user');
 
+let btnLogout = document.getElementById('btn-logout');
 
 btnNewUser.addEventListener('click',() => {
-    websocketClient.request<User[]>('createUser',{},(error,users) => {
+    let newUser:User = {
+        username: 'username',
+        password: 'password',
+    }
+    websocketClient.request<NewUserResponse,User>('createUser',newUser,(error,response:NewUserResponse) => {
         if(error) {
             console.log('Error:',error);
             return;
         } else {
-            globalUsers = users;
+            //response {done:true}
+            console.log('new user created');
         }
     });
 });
-
-let btnLogout = document.getElementById('btn-logout');
 
 btnLogout.addEventListener('click',() => {
     websocketClient.logout((error,response) => {

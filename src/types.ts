@@ -45,7 +45,7 @@ export interface WebSocketResponse {
 export type WebSocketClientFn = <S = any>(connectionOptions?:SocketConnectorOptions) => SocketConnector<S>;
 
 export interface SocketConnector<S> {
-    request                   : <T = any>(request:string | number,data:any,cb:(error: any, response: T) => void) => void;
+    request                   : <T = any,R = any>(request:string | number,body:R,cb:(error: any, response: T) => void) => void;
     connect                   : <T = any>(websocketServerURL:string,authCredentials:T,newOnAuthSuccess:(error: any, response: S) => void) => void;
     onBroadcast               : <T = any>(name:string,cb:(error: any, response: T) => void) => void;
     joinGroup                 : (group:string,cb:(error: any, response: WebSocketResponse) => void) => void;

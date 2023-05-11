@@ -140,7 +140,7 @@ export const WebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:Soc
         Send<{echoAt:number,received:T}>('call','echo',null,data,cb);
     }
 
-    const request = <T = any>(request:string | number,data:any,cb:(error: any, response: T) => void = null) => {
+    const request = <T = any,R= any>(request:string | number,data:R,cb:(error: any, response: T) => void = null) => {
         Send('call',request,null,data,cb);
     }
 
