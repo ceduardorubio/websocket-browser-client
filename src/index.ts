@@ -2,11 +2,11 @@ import { SocketAction, SocketConnector, SocketConnectorOptions, SocketFn, Socket
 
 export const WebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:SocketConnectorOptions = null) => {
     
-    let webSocket          :WebSocket                = null
-    let packageID          :number                   = 0;
-    let session            :S                     = null;
-    let onServerResponse   :SocketServerCallsStack   = {};
-    let broadcastListeners :SocketListeners          = {};
+    let webSocket          :WebSocket              = null
+    let packageID          :number                 = 0;
+    let session            :S                      = null;
+    let onServerResponse   :SocketServerCallsStack = {};
+    let broadcastListeners :SocketListeners        = {};
 
     let authCredentials              :any  = null;
     let onAuthenticationResponse     :SocketFn |null           = null
@@ -14,10 +14,10 @@ export const WebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:Soc
     let reconnect                    :boolean                  = true;
     let hasBeingConnectedBefore      :boolean                  = false;
 
-    let onConnectionErrorReconnect   :boolean                             = true;
-    let authCallbackOnReconnect      :boolean                             = true;
-    let reconnectionTimeout          :number                              = 2_000;
-    let onError                      :(error: any, data: any) => void = console.log;
+    let onConnectionErrorReconnect   :boolean                         = true;
+    let authCallbackOnReconnect      :boolean                         = true;
+    let reconnectionTimeout          :number                          = 2_000;
+    let onError                      :(error: any, data: any) => void = console.error;
 
     if(connectionOptions){
         onConnectionErrorReconnect = connectionOptions.onConnectionErrorReconnect || onConnectionErrorReconnect;

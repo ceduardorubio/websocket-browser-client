@@ -7,8 +7,8 @@ A web socket client for web socket process connector servers. Use this client to
 ```bash
 npm install --save websocket-browser-client
 ```
-## Usage
-### Setup
+# Setup
+## 1. Create the Client
 
 ```typescript
 // Example
@@ -36,7 +36,7 @@ websocketClient.onError = (error,data) => {
 
 Description 
 
-### Connect
+## 2. Connect
     
  ```typescript
  // Example 
@@ -64,9 +64,10 @@ websocketClient.connect<Credentials>('ws://localhost:8080',authCredentials,(erro
 ```
 Description 
 
-**Options**
+### Options
 
-### Echo
+## 3. Test the Client Connection (optional)
+
 
 ```typescript
 // Example
@@ -89,6 +90,7 @@ websocketClient.echo<MyDataType>(data,(error,response: {echoAt:number,received:M
 ```
 Description
 
+# Usage - API
 ### Request
 
 ```typescript
