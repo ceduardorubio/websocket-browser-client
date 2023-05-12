@@ -42,9 +42,9 @@ export interface WebSocketResponse {
     done  : boolean,
 }
 
-export type WebSocketClientFn = <S = any>(connectionOptions?:SocketConnectorOptions) => SocketConnector<S>;
+export type WebSocketClientFn = <S = any>(connectionOptions?:SocketConnectorOptions) => WebSocketClient<S>;
 
-export interface SocketConnector<S> {
+export interface WebSocketClient<S> {
     request                   : <T = any,R = any>(request:string | number,body:R,cb:(error: any, response: T) => void) => void;
     connect                   : <T = any>(websocketServerURL:string,authCredentials:T,newOnAuthSuccess:(error: any, response: S) => void) => void;
     onBroadcast               : <T = any>(name:string,cb:(error: any, response: T) => void) => void;

@@ -1,6 +1,6 @@
-import { SocketAction, SocketConnector, SocketConnectorOptions, SocketFn, SocketListeners, SocketPackage, SocketPackageInfo, SocketPackageResponse, SocketServerCallsStack, WebSocketClientFn, WebSocketResponse } from "./types";
+import { SocketAction, WebSocketClient, SocketConnectorOptions, SocketFn, SocketListeners, SocketPackage, SocketPackageInfo, SocketPackageResponse, SocketServerCallsStack, WebSocketClientFn, WebSocketResponse } from "./types";
 
-export const WebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:SocketConnectorOptions = null) => {
+export const CreateWebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:SocketConnectorOptions = null) => {
     
     let webSocket          :WebSocket              = null
     let packageID          :number                 = 0;
@@ -188,7 +188,7 @@ export const WebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:Soc
         ReloadConnection(1);
     }
 
-    let result: SocketConnector<S> = {
+    let result: WebSocketClient<S> = {
         request,
         joinGroup,
         leaveGroup,

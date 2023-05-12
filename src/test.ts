@@ -1,5 +1,5 @@
-import { WebSocketClient } from ".";
-import { SocketConnector,SocketConnectorOptions } from "./types";
+import { CreateWebSocketClient } from ".";
+import { WebSocketClient,SocketConnectorOptions } from "./types";
 
 
 let globalUsers: User[] = [];
@@ -34,7 +34,7 @@ let config:SocketConnectorOptions = {
     reconnectionTimeout       : 1000,
 }
 
-let websocketClient = WebSocketClient<SessionData>(config);
+let websocketClient:WebSocketClient<SessionData> = CreateWebSocketClient<SessionData>(config);
 
 websocketClient.onConnectionErrorReconnect = true;
 websocketClient.reconnectionTimeout        = 1000;

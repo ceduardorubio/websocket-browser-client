@@ -12,8 +12,15 @@ npm install --save websocket-browser-client
 
 ```typescript
 // Example
-import { WebSocketClient } from "WebSocketBrowserClient";
-import { SocketConnector,SocketConnectorOptions } from "./types";
+import { CreateWebSocketClient } from "WebSocketBrowserClient";
+import { WebSocketClient,SocketConnectorOptions } from "./types";
+
+export interface SessionData {
+      //... your session data
+      //token:string; for example
+} 
+
+
 
 let config:SocketConnectorOptions = {
     onConnectionErrorReconnect: true,   // optional default true
@@ -21,7 +28,7 @@ let config:SocketConnectorOptions = {
     reconnectionTimeout       : 2000,   // optional default 2000
 }
 
-let websocketClient:SocketConnector<User>     = WebSocketClient<User>(config);
+let websocketClient:WebSocketClient<SessionData> = CreateWebSocketClient<SessionData>(config);
 
 websocketClient.onConnectionErrorReconnect = true; // same as config.onConnectionErrorReconnect
 websocketClient.authCallbackOnReconnect    = true; // same as config.authCallbackOnReconnect
@@ -218,6 +225,34 @@ Description
  websocketClient.close();
 ```
 Description
+
+## TYPES / INTERFACES
+
+```typescript
+export interface SocketConnector<S> {
+    request                   : <T = any,R = any>(request:string | number,body:R,cb:(error: any, response: T) => void) => void;
+    connect                   : <T = any>(websocketServerURL:string,authCredentials:T,newOnAuthSuccess:(error: any, response: S) => void) => void;
+    onBroadcast               : <T = any>(name:string,cb:(error: any, response: T) => void) => void;
+    joinGroup                 : (group:string,cb:(error: any, response: WebSocketResponse) => void) => void;
+    leaveGroup                : (group:string,cb:(error: any, response: WebSocketResponse) => void) => void;
+    leaveAllGroups            : (cb:(error: any, response: WebSocketResponse) => void) => void;
+    logout                    : (cb:SocketFn) => void;
+    close                     : () => void;
+    onConnectionErrorReconnect: boolean;
+    reconnectionTimeout       : number;
+    authCallbackOnReconnect   : boolean;
+    onError                   : (error: any, data: any) => void,
+    sessionData               : any,
+    echo                      : <T = any>(data:T,cb:(error: any, response: {echoAt:number,received:T}) => void) => void;
+}
+
+export interface SocketConnectorOptions {
+    onConnectionErrorReconnect?: boolean,
+    authCallbackOnReconnect?   : boolean,
+    reconnectionTimeout?       : number,
+    onError?                   : (data:any) => void
+}
+```
 
 
 ## READ THE CODE ON
