@@ -1,155 +1,69 @@
-import { CreateWebSocketClient } from ".";
-import { WebSocketClient,SocketConnectorOptions } from "./types";
+import { WebSocketBrowserClient } from ".";
 
-
+interface User { }
+interface NewUserResponse { }
 let globalUsers: User[] = [];
-export interface User {
-    username:string;
-    password:string;
-}
 
-export interface Credentials {
-    email:string;
-    password:string;
-}
 
-export interface NewUserResponse{
-    done:boolean;
-}
-
-let authCredentials:Credentials = {
+let authCredentials = {
     email   : 'email',
     password: 'p45$.vv.0r6',
     //... your credentials
 }
 
-export interface SessionData {
-    token:string;
-    //... your session data
-}
+let wsClient = new WebSocketBrowserClient();
 
-let config:SocketConnectorOptions = {
-    onConnectionErrorReconnect: true,
-    authCallbackOnReconnect   : true,
-    reconnectionTimeout       : 1000,
-}
+wsClient.connectTo('ws://localhost:8080',authCredentials);
 
-let websocketClient:WebSocketClient<SessionData> = CreateWebSocketClient<SessionData>(config);
+wsClient.whenConnected = () => {
+    console.log('WebSocketClient Connected');
 
-websocketClient.onConnectionErrorReconnect = true;
-websocketClient.reconnectionTimeout        = 1000;
-websocketClient.authCallbackOnReconnect    = true;
+    wsClient.echo({msg:'testing connection ...'},(error,response) => {
+        console.log({error,response});
+    });
 
-websocketClient.onError = (error,data) => {
-    console.log('Error:',error);
-    console.log('Data:',data);
+    wsClient.request<User[]>('getUsers',{},(error,users) => {
+        if(error) {
+            console.log('Error:',error);
+            return;
+        } else {
+            globalUsers = users;
+        }
+    });
 };
 
-websocketClient.connect<Credentials>('ws://localhost:8080',authCredentials,(error,sessionData) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        console.log('Websocket connected. All ');
-        websocketClient.request<User[]>('getUsers',{},(error,users) => {
-            if(error) {
-                console.log('Error:',error);
-                return;
-            } else {
-                globalUsers = users;
-            }
-        });
+wsClient.ifAuthenticationFails = (authenticationError) => {
+    console.error({authenticationError});
+}
 
-    }
-});
+wsClient.onConnectionLost = (connectionLostError,connectionLostInfo) => {
+    console.error({connectionLostError,connectionLostInfo});    
+}
 
-websocketClient.echo('Hello World',(error,response) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        console.log('Echo:',response);
-    }
-});
+wsClient.onMessageReceived<User>('newUser', globalUsers.push);
 
-websocketClient.joinGroup('group1',(error,response) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('Joined group1');
-    }
-});
+wsClient.joinGroup('group1');
 
-websocketClient.leaveGroup('group1',(error,response) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('leave group1');
-    }
-});
+wsClient.leaveGroup('group1');
 
-websocketClient.leaveAllGroups((error,response) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('leave all groups');
-    }
-});
-
-websocketClient.onBroadcast<User>('newUser',(error,user) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        globalUsers.push(user);
-    }
-});
-
-websocketClient.logout((error,response) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('Joined group1');
-    }
-});
+wsClient.leaveAllGroups();
 
 let btnNewUser = document.getElementById('btn-new-user');
 
 let btnLogout = document.getElementById('btn-logout');
 
 btnNewUser.addEventListener('click',() => {
-    let newUser:User = {
-        username: 'username',
-        password: 'password',
-    }
-    websocketClient.request<NewUserResponse,User>('createUser',newUser,(error,response:NewUserResponse) => {
+    let newUser:User = { }
+    wsClient.request<NewUserResponse,User>('createUser',newUser,(error,response:NewUserResponse) => {
         if(error) {
             console.log('Error:',error);
             return;
         } else {
-            //response {done:true}
             console.log('new user created');
         }
     });
 });
 
 btnLogout.addEventListener('click',() => {
-    websocketClient.logout((error,response) => {
-        if(error) {
-            console.log('Error:',error);
-            return;
-        } else {
-            //response {done:true}
-            console.log('Joined group1');
-            websocketClient.close();
-        }
-    });
+    wsClient.close();
 });

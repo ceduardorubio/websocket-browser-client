@@ -1,235 +1,223 @@
-import { SocketAction, WebSocketClient, SocketConnectorOptions, SocketFn, SocketListeners, SocketPackage, SocketPackageInfo, SocketPackageResponse, SocketServerCallsStack, WebSocketClientFn, WebSocketResponse } from "./types";
+interface SocketPackage {
+    info: SocketPackageInfo,
+    data: any
+}
+interface SocketPackageInfo {
+    action   : SocketAction
+    request  : string | number,
+    group    : string,
+    packageID: number
+}
+interface SocketPackageResponse {
+    info    : SocketPackageInfo,
+    error   : any,
+    response: any
+}
+interface SocketServerCallsStack {
+    [key: number]:  (error: any, response: any) => void
+}
+interface SocketListeners {
+    [key: string]:  ((response: any) => void)[]
+}
 
-export const CreateWebSocketClient:WebSocketClientFn = <S = any>(connectionOptions:SocketConnectorOptions = null) => {
-    
-    let webSocket          :WebSocket              = null
-    let packageID          :number                 = 0;
-    let session            :S                      = null;
-    let onServerResponse   :SocketServerCallsStack = {};
-    let broadcastListeners :SocketListeners        = {};
+type SocketAction = 'group' | 'call' | 'auth' | 'broadcast';
+interface SocketConnectorOptions {
+    onConnectionErrorReconnect?: boolean,
+    authCallbackOnReconnect?   : boolean,
+    reconnectionTimeout?       : number,
+}
+export class WebSocketBrowserClient {
+    private webSocket: WebSocket = null;
+    private packageID: number    = 0;
+    private session  : any       = null
 
-    let authCredentials              :any  = null;
-    let onAuthenticationResponse     :SocketFn |null           = null
-    let url                          :string                   = null;
-    let reconnect                    :boolean                  = true;
-    let hasBeingConnectedBefore      :boolean                  = false;
+    private onServerResponse:SocketServerCallsStack = {};
+    private broadcastListeners :SocketListeners     = {};
 
-    let onConnectionErrorReconnect   :boolean                         = true;
-    let authCallbackOnReconnect      :boolean                         = true;
-    let reconnectionTimeout          :number                          = 2_000;
-    let onError                      :(error: any, data: any) => void = console.error;
+    private authCredentials:any     = {};
+    private url:string              = null;
+    private reconnect: boolean      = true;
+    private hasBeingConnectedBefore = false;
 
-    if(connectionOptions){
-        onConnectionErrorReconnect = connectionOptions.onConnectionErrorReconnect || onConnectionErrorReconnect;
-        authCallbackOnReconnect    = connectionOptions.authCallbackOnReconnect    || authCallbackOnReconnect;
-        reconnectionTimeout        = connectionOptions.reconnectionTimeout        || reconnectionTimeout;
-        onError                    = connectionOptions.onError                    || onError;
+    private onConnectionErrorReconnect :boolean = true;
+    private authCallbackOnReconnect    :boolean = true;
+    private reconnectionTimeout        :number  = 2_000;
+
+    private _onConnectionLost :(error: any, info: any) => void         = console.error;
+    private _whenConnected :() => void                                 = () => {};
+    private _ifAuthenticationFails :(authenticationError: any) => void = () => {};
+   
+    constructor(connectionOptions:SocketConnectorOptions = null) {
+        if(connectionOptions){
+            this.onConnectionErrorReconnect = connectionOptions.onConnectionErrorReconnect || this.onConnectionErrorReconnect;
+            this.authCallbackOnReconnect    = connectionOptions.authCallbackOnReconnect    || this.authCallbackOnReconnect;
+            this.reconnectionTimeout        = connectionOptions.reconnectionTimeout        || this.reconnectionTimeout;
+        }
     }
 
-
-    const ReloadConnection = (reconnectionWait:number = reconnectionTimeout) => {
-        if(!reconnect ) {
-            onError('auth failed',null);
+    private ReloadConnection = (reconnectionWait:number = this.reconnectionTimeout) => {
+        if(!this.reconnect ) {
+            this._onConnectionLost('auth failed',null);
         } else {
             setTimeout(() => {
                 try {
-                    ClearWebSocket();
-                    StartSocket();                
+                    this.ClearWebSocket();
+                    this.StartSocket();                
                 } catch(e){
-                    onError('connection error',e);
+                    this._onConnectionLost('connection error',e);
                 }
             },reconnectionWait);
         }
     }
 
-    const ResetControllers = () => {
-        packageID          = 0;
-        session            = null;
-        onServerResponse   = {};
-        broadcastListeners = {};
+    private ResetControllers = () => {
+        this.packageID          = 0;
+        this.session            = null;
+        this.onServerResponse   = {};
+        this.broadcastListeners = {};
     }
 
-    const StartSocket = () => {
-        ResetControllers();
-        webSocket          = new WebSocket(url);
-        webSocket.onerror   = onConnError;
-        webSocket.onclose   = onConnError ;
-        webSocket.onopen    = onConnOpen;
-        webSocket.onmessage = onConnMessage;
+    private StartSocket = () => {
+        this.ResetControllers();
+        this.webSocket          = new WebSocket(this.url);
+        this.webSocket.onerror   = this.onConnError;
+        this.webSocket.onclose   = this.onConnError ;
+        this.webSocket.onopen    = this.onConnOpen;
+        this.webSocket.onmessage = this.onConnMessage;
     }
 
-    const ClearWebSocket = () => {
-        if(!webSocket) return; 
-        webSocket.onclose   = () => {};
-        webSocket.onerror   = () => {};
-        webSocket.onopen    = () => {};
-        webSocket.onmessage = () => {};
-        webSocket.close();
-        webSocket = null;
+    private ClearWebSocket = () => {
+        if(!this.webSocket) return; 
+        this.webSocket.onclose   = () => {};
+        this.webSocket.onerror   = () => {};
+        this.webSocket.onopen    = () => {};
+        this.webSocket.onmessage = () => {};
+        this.webSocket.close();
+        this.webSocket = null;
     }
 
-    const onConnError = (e:any) => {
-        onError('connection lost error',e);
-        if (onConnectionErrorReconnect) ReloadConnection();
+    private onConnError = (e:any) => {
+        this._onConnectionLost('connection lost error',e);
+        if (this.onConnectionErrorReconnect) this.ReloadConnection();
     }
 
-    const onConnMessage = (xMsg:any) => {
+    private onConnMessage = (xMsg:any) => {
         let packageResponse:SocketPackageResponse = null;
         try {
             packageResponse = JSON.parse(xMsg.data);
         } catch (e) {
-            return onError( 'invalid incoming data: ', xMsg.data);
+            return this._onConnectionLost( 'invalid incoming data: ', xMsg.data);
         }
-        HandleServerMessage(packageResponse);
+        this.HandleServerMessage(packageResponse);
     }
 
-    const onConnOpen = () => {
-        Send<S>('auth','login',null,authCredentials,(error,sessionData) => {
+    private onConnOpen = () => {
+        this.Send<any>('auth','login',null,this.authCredentials,(error,sessionData) => {
             if(error){
-                session   = null;
-                reconnect = false;
-                onAuthenticationResponse(error,null);
+                this.session   = null;
+                this.reconnect = false;
+                this._ifAuthenticationFails(error);
             } else {
-                session = sessionData;
-                if (hasBeingConnectedBefore) {
-                    if (authCallbackOnReconnect) onAuthenticationResponse(null,sessionData);
+                this.session = sessionData;
+                if (this.hasBeingConnectedBefore) {
+                    if (this.authCallbackOnReconnect) this._whenConnected();
                 } else {
-                    onAuthenticationResponse(null,sessionData);
-                    hasBeingConnectedBefore = true;
+                    this.hasBeingConnectedBefore = true;
+                    this._whenConnected();
                 }
             }
         });
     }
 
-    const HandleServerMessage = (r:SocketPackageResponse) => {
+    private HandleServerMessage = (r:SocketPackageResponse) => {
         let { info,error,response } = r;
         if(info.action == "broadcast"){
             let { request } = info;
-            if(broadcastListeners[request]) {
-                let listeners = broadcastListeners[request];
-                listeners.forEach(fn => fn(error,response));
+            if(this.broadcastListeners[request]) {
+                let listeners = this.broadcastListeners[request];
+                listeners.forEach(fn => fn(response));
             }
         } else {
             let isServerResponse = info.action == "call" || info.action == "group" || info.action == "auth"
             if(isServerResponse){
                 let { packageID } = info;
-                if(onServerResponse[packageID]){
-                    let onResponseToPackage = onServerResponse[packageID];
+                if(this.onServerResponse[packageID]){
+                    let onResponseToPackage = this.onServerResponse[packageID];
                     onResponseToPackage(error,response);
-                    delete onServerResponse[packageID];
+                    delete this.onServerResponse[packageID];
                 }
             }
         }
     }
 
-    const Send = <T = WebSocketResponse> (action:SocketAction,request:string | number,group:string = '',data:any = null,cbOnResponse:(error: any, response: T) => void  = null) => {
-        if(session || (action == 'auth' && request == 'login')){
-            let info: SocketPackageInfo = { action,request,group,packageID } ;
+    private Send = <T = any> (action:SocketAction,request:string | number,group:string = '',data:any = null,cbOnResponse:(error: any, response: T) => void  = null) => {
+        if(this.session || (action == 'auth' && request == 'login')){
+            let info: SocketPackageInfo = { action,request,group,packageID:this.packageID } ;
             let body:SocketPackage      = { info, data}
             if(cbOnResponse) {
-                onServerResponse[packageID] = cbOnResponse;
-                packageID++;
+                this.onServerResponse[this.packageID] = cbOnResponse;
+                this.packageID++;
             }
-            webSocket.send(JSON.stringify(body));
+            this.webSocket.send(JSON.stringify(body));
         } else {
             cbOnResponse('not authenticated',null);
         }
     }
 
-    const echo = <T = any>(data:T,cb:(error: any, response: {echoAt:number,received:T}) => void = null) => {
-        Send<{echoAt:number,received:T}>('call','echo',null,data,cb);
-    }
-
-    const request = <T = any,R= any>(request:string | number,data:R,cb:(error: any, response: T) => void = null) => {
-        Send('call',request,null,data,cb);
-    }
-
-    const joinGroup = (group:string,cb:(error: any, response: WebSocketResponse) => void) => {
-        Send('group','join',group,null,cb);
-    }
-
-    const leaveGroup = (group:string,cb:(error: any, response: WebSocketResponse) => void) => {
-        Send('group','leave',group,null,cb);
-    }
-
-    const leaveAllGroups = (cb:(error: any, response: WebSocketResponse) => void) => {
-        Send('group','leaveAll',null,null,cb);
-    }
-
-    const onBroadcast = <T = any>(name:string,cb:(error: any, response: T) => void) => {
-        if(!broadcastListeners[name]) broadcastListeners[name] = [];
-        broadcastListeners[name].push(cb);
-    }
-
-    const logout = (cb:SocketFn) => {
-        reconnect = false;
-        Send('auth','logout',null,null,(error,response) => {
-            close();
-            cb(error,response);
-        });
-    }
-
-    const close = () => {
-        reconnect = false;
-        ClearWebSocket();
-        ResetControllers();
-    }
-
-    const connect = <T = any>(websocketServerURL:string,newAuthCredentials:T,authResponseCallback:(error: any, response: S) => void) => {
+    public connectTo = <T = any>(websocketServerURL:string,newAuthCredentials:T = null) => {
         let u = websocketServerURL;
         if(u.startsWith('http://'))  u = u.replace('http://','ws://')
         if(u.startsWith('https://')) u = u.replace('https://','wss://')
-        if(!u.startsWith('ws://') && !u.startsWith('wss://')) u = 'ws://' + u;
-        url                      = u;
-        reconnect                = true;
-        authCredentials          = newAuthCredentials;
-        hasBeingConnectedBefore  = false;
-        onAuthenticationResponse = authResponseCallback;
-        ReloadConnection(1);
+        if(u.startsWith('/') ) u = 'ws://' + window.location.hostname + u;
+        this.url                      = u;
+        this.reconnect                = true;
+        this.authCredentials          = newAuthCredentials || this.authCredentials;
+        this.hasBeingConnectedBefore  = false;
+        this.ReloadConnection(1);
+        return this;
     }
 
-    let result: WebSocketClient<S> = {
-        request,
-        joinGroup,
-        leaveGroup,
-        leaveAllGroups,
-
-        onBroadcast,
-        logout,
-        connect,
-        close,
-        echo,
-        get onConnectionErrorReconnect() : boolean {
-            return onConnectionErrorReconnect
-        },
-        set onConnectionErrorReconnect(v : boolean) {
-            onConnectionErrorReconnect = v;
-        },
-        get reconnectionTimeout() : number {
-            return reconnectionTimeout
-        },
-        set reconnectionTimeout(v : number) {
-            reconnectionTimeout = v;
-        },
-        get authCallbackOnReconnect() : boolean {
-            return authCallbackOnReconnect
-        },
-        set authCallbackOnReconnect(v : boolean) {
-            authCallbackOnReconnect = v;
-        },
-        get onError() : (error: any, data: any) => void {
-            return onError
-        },
-        set onError(v : (error: any, data: any) => void) {
-            onError = v;
-        },
-        get sessionData() : S {
-            return session
-        },
-        set sessionData(v : S) {
-            //session = v;
-        }
+    public echo = <T = any>(data:T,cb:(error: any, response: {echoAt:number,received:T}) => void = null) => {
+        this.Send<{echoAt:number,received:T}>('call','echo',null,data,cb);
     }
 
-    return result
+    public request = <T = any,R= any>(request:string | number,data:R,cb:(error: any, response: T) => void = null) => {
+        this.Send('call',request,null,data,cb);
+    }
+
+    public joinGroup = (group:string,cb:(error: any, response: {done:boolean}) => void = null) => {
+        this.Send('group','join',group,null,cb);
+    }
+
+    public leaveGroup = (group:string,cb:(error: any, response: {done:boolean}) => void = null) => {
+        this.Send('group','leave',group,null,cb);
+    }
+
+    public leaveAllGroups = (cb:(error: any, response: {done:boolean}) => void = null) => {
+        this.Send('group','leaveAll',null,null,cb);
+    }
+
+    public onMessageReceived = <T = any>(subject:string,cb:(incomingData: T) => void) => {
+        if(!this.broadcastListeners[subject]) this.broadcastListeners[subject] = [];
+        this.broadcastListeners[subject].push(cb);
+    }
+
+    public get close (){
+        this.reconnect = false;
+        this.ClearWebSocket();
+        this.ResetControllers();
+        return null;
+    }
+
+    public set onConnectionLost(oce: (error:any,info:any) => void) {
+        this._onConnectionLost = oce;
+    }
+
+    public set ifAuthenticationFails(oaf: (authenticationError:any) => void) {
+        this._ifAuthenticationFails = oaf;
+    }
+
+    public set whenConnected(oc: () => void) {
+        this._whenConnected = oc;
+    }
 }
