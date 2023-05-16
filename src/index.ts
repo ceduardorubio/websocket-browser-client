@@ -59,7 +59,7 @@ export const CreateWebSocketClient:WebSocketClientFn = <S = any>(connectionOptio
     }
 
     const ClearWebSocket = () => {
-        if(webSocket) return; 
+        if(!webSocket) return; 
         webSocket.onclose   = () => {};
         webSocket.onerror   = () => {};
         webSocket.onopen    = () => {};

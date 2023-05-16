@@ -20,8 +20,6 @@ export interface SessionData {
       //token:string; for example
 } 
 
-
-
 let config:SocketConnectorOptions = {
     onConnectionErrorReconnect: true,   // optional default true
     authCallbackOnReconnect   : true,   // optional default true
