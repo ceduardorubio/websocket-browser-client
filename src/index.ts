@@ -123,7 +123,7 @@ export const CreateWebSocketClient:WebSocketClientFn = <S = any>(connectionOptio
     }
 
     const Send = <T = WebSocketResponse> (action:SocketAction,request:string | number,group:string = '',data:any = null,cbOnResponse:(error: any, response: T) => void  = null) => {
-        if(session){
+        if(session || (action == 'auth' && request == 'login')){
             let info: SocketPackageInfo = { action,request,group,packageID } ;
             let body:SocketPackage      = { info, data}
             if(cbOnResponse) {
