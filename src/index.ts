@@ -224,4 +224,8 @@ export class WebSocketBrowserClient {
     public get session(){
         return this._session;
     }
+
+    public get isConnected(){
+        return this._session != null;
+    }
 }
