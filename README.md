@@ -12,7 +12,7 @@ npm install --save ws-browser-client
 ```
 ## Connection Setup
 ```typescript
-import { WebSocketBrowserClient } from "WebSocketBrowserClient";
+import { WebSocketBrowserClient } from "ws-browser-client";
 
 export const wsClient = new WebSocketBrowserClient();
 
