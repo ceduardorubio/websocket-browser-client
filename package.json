@@ -1,6 +1,6 @@
 {
   "name": "ws-browser-client",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Browser library to connect to a web socket connector server ",
   "main": "dist/index.js",
   "types":"dist/index.d.ts",
@@ -8,8 +8,7 @@
     "tsc": "rm -rf ./dist; tsc"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "repository": {
     "type": "git",
