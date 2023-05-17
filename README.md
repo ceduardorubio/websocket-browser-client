@@ -119,4 +119,6 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
 ## Change Log
 
 ### 0.0.3
-    - session is now available after connection is done. [wsClient.session]
+    - session is now available after connection is done. [wwsClient.sessión
+### 0.0.5
+    - with src folder 
