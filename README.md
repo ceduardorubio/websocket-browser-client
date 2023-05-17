@@ -1,255 +1,100 @@
 # Web Socket Browser Client
 
 ## Description
-A web socket client for web socket process connector servers. Use this client to connect to a web socket server and send and receive messages.
+A web socket browser client for web socket process connector servers. Use this client to connect to a web socket server and send and receive messages.
+
+USE THIS CLIENT TO CONNECT TO A WEB SOCKET SERVER SET WITH 
+[web socket process connector](https://www.npmjs.com/package/web-socket-processes-connector)
 
 ## Installation
 ```bash
-npm install --save websocket-browser-client
+npm install --save ws-browser-client
 ```
-# Setup
-## 1. Create the Client
-
+## Connection Setup
 ```typescript
-// Example
-import { CreateWebSocketClient } from "WebSocketBrowserClient";
-import { WebSocketClient,SocketConnectorOptions } from "./types";
+import { WebSocketBrowserClient } from "WebSocketBrowserClient";
 
-export interface SessionData {
-      //... your session data
-      //token:string; for example
-} 
+export const wsClient = new WebSocketBrowserClient();
 
-let config:SocketConnectorOptions = {
-    onConnectionErrorReconnect: true,   // optional default true
-    authCallbackOnReconnect   : true,   // optional default true
-    reconnectionTimeout       : 2000,   // optional default 2000
-}
-
-let websocketClient:WebSocketClient<SessionData> = CreateWebSocketClient<SessionData>(config);
-
-websocketClient.onConnectionErrorReconnect = true; // same as config.onConnectionErrorReconnect
-websocketClient.authCallbackOnReconnect    = true; // same as config.authCallbackOnReconnect
-websocketClient.reconnectionTimeout        = 1000; // same as config.reconnectionTimeout
-
-websocketClient.onError = (error,data) => {
-    console.log('Error:',error);
-    console.log('Error Data:',data);
-};
-
-```
-
-Description 
-
-## 2. Connect
-    
- ```typescript
- // Example 
-let authCredentials:Credentials = {
+let authCredentials = {
     //... your credentials
 }
+// set what to do if authentication is successful
+wsClient.whenConnected = () => {
+    console.log('WebSocketClient Connected');
+    // ... now you can use the client in other parts of your application
+    AfterConnectedProcedure();
+};
+// set what to do if authentication fails
+wsClient.ifAuthenticationFails = (authenticationError) => {
+    console.error({authenticationError});
+}
+// set what to do if connection is lost
+wsClient.onConnectionLost = (connectionLostError,connectionLostInfo) => {
+    console.error({connectionLostError,connectionLostInfo});    
+}
+// execute the connection to the server
+wsClient.connectTo('ws://localhost:8080',authCredentials);
+```
+You can rewrite the `whenConnected`, `ifAuthenticationFails` and `onConnectionLost` methods anytime before the `connectTo` method is called.
+## API: After Connection Setup
+```typescript
+interface User { }
+interface NewUserResponse { }
+let globalUsers: User[] = [];
 
-export interface SessionData {
-      //... your session data
-      //token:string; for example
-} 
+const AfterConnectedProcedure = () => {
+    // send a echo message to the server and wait for a response
+    wsClient.echo({msg:'testing connection ...'},(error,response) => {
+        console.log({error,response});
+    });
+    // send a request message to the server and wait for a response to get an array of users
+    wsClient.request<User[]>('getUsers',{},(error,users) => {
+        if(error) {
+            console.log('Error:',error);
+            return;
+        } else {
+            globalUsers = users;
+        }
+    });
+    // join the group1 to receive messages from the server for this group
+    wsClient.joinGroup('group1');
+    // leave the group1
+    wsClient.leaveGroup('group1');
+    // leave all groups
+    wsClient.leaveAllGroups();
+}
 
-websocketClient.connect<Credentials>('ws://localhost:8080',authCredentials,(error,sessionData:SessionData) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        console.log('Websocket connected. All ');
-        // Connection is established
-        // ... 
-        // your post connection logic here
-    }
+// you can set a onMessageReceived listener, 
+// to receive messages from the server 
+// before or after the connection setup is done
+wsClient.onMessageReceived<User>('newUser', globalUsers.push);
+```
+
+## API: Example
+As long as the connection is open, you can send messages to the server and receive messages from the server in any part of your application.
+```typescript
+let btnNewUser = document.getElementById('btn-new-user');
+let btnLogout  = document.getElementById('btn-logout');
+
+btnNewUser.addEventListener('click',() => {
+    let newUser:User = { }
+    // send a request message to the server and wait for a response to create a new user
+    wsClient.request<NewUserResponse,User>('createUser',newUser,(error,response:NewUserResponse) => {
+        if(error) {
+            console.log('Error:',error);
+            return;
+        } else {
+            console.log('new user created');
+        }
+    });
 });
 
-```
-Description 
-
-### Options
-
-## 3. Test the Client Connection (optional)
-
-
-```typescript
-// Example
-export interface MyDataType {
-    //... your data
-}
-
-let data:MyDataType = {
-    //... your data
-}
-
-websocketClient.echo<MyDataType>(data,(error,response: {echoAt:number,received:MyDataType}) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        console.log('Echo:',response);
-    }
+btnLogout.addEventListener('click',() => {
+    // close the connection
+    wsClient.close();
 });
-```
-Description
 
-# Usage - API
-### Request
-
-```typescript
-// Example
-export interface User {
-    //... your user data 
-}
-        
-export interface NewUserResponse{
-    // ... your response data
-}
-
-let newUser: User = {
-    //... 
-}
-
-let globalUsers:User[] = [];
-
-websocketClient.request<NewUserResponse,User>('createUser',newUser,(error,user:NewUserResponse) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        globalUsers = users;
-    }
-});
-```
-Description
-
-### OnBroadcast
-
-
-```typescript
-//Example
-export interface User {
-    //... your user data 
-}
-
-let globalUsers:User[] = [];
-
-websocketClient.onBroadcast<User>('newUser',(error,user:User) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        globalUsers.push(user);
-    }
-});
-```
-Description
-
-## Groups
-
-```typescript
-// inner interface use as response interface for joinGroup, leaveGroup, leaveAllGroups
-export interface WebSocketResponse {
-    done:boolean;
-}
-```
-
-### Join Group
-    
-```typescript
-websocketClient.joinGroup('group1',(error,response:WebSocketResponse) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('Joined group1');
-    }
-});
-```
-Description
-
-### Leave Group
-
-```typescript
-
-websocketClient.leaveGroup('group1',(error,response:WebSocketResponse) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('leave group1');
-    }
-});
-```
-Description
-
-### Leave All Groups
-
-```typescript
-websocketClient.leaveAllGroups((error,response:WebSocketResponse) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('leave all groups');
-    }
-});
-```
-Description
-
-### Logout
-    
-```typescript
-websocketClient.logout((error,response) => {
-    if(error) {
-        console.log('Error:',error);
-        return;
-    } else {
-        //response {done:true}
-        console.log('Joined group1');
-    }
-});
-```
-Description
-
-### Close
-   
-```typescript
- websocketClient.close();
-```
-Description
-
-## TYPES / INTERFACES
-
-```typescript
-export interface SocketConnector<S> {
-    request                   : <T = any,R = any>(request:string | number,body:R,cb:(error: any, response: T) => void) => void;
-    connect                   : <T = any>(websocketServerURL:string,authCredentials:T,newOnAuthSuccess:(error: any, response: S) => void) => void;
-    onBroadcast               : <T = any>(name:string,cb:(error: any, response: T) => void) => void;
-    joinGroup                 : (group:string,cb:(error: any, response: WebSocketResponse) => void) => void;
-    leaveGroup                : (group:string,cb:(error: any, response: WebSocketResponse) => void) => void;
-    leaveAllGroups            : (cb:(error: any, response: WebSocketResponse) => void) => void;
-    logout                    : (cb:SocketFn) => void;
-    close                     : () => void;
-    onConnectionErrorReconnect: boolean;
-    reconnectionTimeout       : number;
-    authCallbackOnReconnect   : boolean;
-    onError                   : (error: any, data: any) => void,
-    sessionData               : any,
-    echo                      : <T = any>(data:T,cb:(error: any, response: {echoAt:number,received:T}) => void) => void;
-}
-
-export interface SocketConnectorOptions {
-    onConnectionErrorReconnect?: boolean,
-    authCallbackOnReconnect?   : boolean,
-    reconnectionTimeout?       : number,
-    onError?                   : (data:any) => void
-}
 ```
 
 
