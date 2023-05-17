@@ -34,7 +34,7 @@ wsClient.onConnectionError = (connectionLostError,connectionLostInfo) => {
     console.error({connectionLostError,connectionLostInfo});    
 }
 
-wsClient.onConnectionClose = (connectionCloseError,connectionCloseEvent) => {
+wsClient.onConnectionClosed = (connectionCloseError,connectionCloseEvent) => {
     console.log({connectionCloseError,connectionCloseEvent});
 }
 // execute the connection to the server

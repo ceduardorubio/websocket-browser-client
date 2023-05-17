@@ -101,7 +101,7 @@ export class WebSocketBrowserClient {
     }
 
     private onConnClose = (e:any) => {
-        this._onConnectionClose('connection closed',e);
+        if (this.session) this._onConnectionClose('connection closed',e);
     }
 
     private onConnMessage = (xMsg:any) => {
@@ -216,7 +216,7 @@ export class WebSocketBrowserClient {
         this._onConnectionError = oce;
     }
 
-    public set onConnectionClose(occ: (error:any,info:any) => void) {
+    public set onConnectionClosed(occ: (error:any,info:any) => void) {
         this._onConnectionClose = occ;
     }
 
