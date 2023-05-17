@@ -27,9 +27,9 @@ interface SocketConnectorOptions {
     reconnectionTimeout?       : number,
 }
 export class WebSocketBrowserClient {
-    private webSocket: WebSocket = null;
+    public webSocket: WebSocket = null;
     private packageID: number    = 0;
-    private session  : any       = null
+    private _session  : any       = null
 
     private onServerResponse:SocketServerCallsStack = {};
     private broadcastListeners :SocketListeners     = {};
@@ -72,7 +72,7 @@ export class WebSocketBrowserClient {
 
     private ResetControllers = () => {
         this.packageID          = 0;
-        this.session            = null;
+        this._session            = null;
         this.onServerResponse   = {};
         this.broadcastListeners = {};
     }
@@ -114,11 +114,11 @@ export class WebSocketBrowserClient {
     private onConnOpen = () => {
         this.Send<any>('auth','login',null,this.authCredentials,(error,sessionData) => {
             if(error){
-                this.session   = null;
+                this._session   = null;
                 this.reconnect = false;
                 this._ifAuthenticationFails(error);
             } else {
-                this.session = sessionData;
+                this._session = sessionData;
                 if (this.hasBeingConnectedBefore) {
                     if (this.authCallbackOnReconnect) this._whenConnected();
                 } else {
@@ -151,7 +151,7 @@ export class WebSocketBrowserClient {
     }
 
     private Send = <T = any> (action:SocketAction,request:string | number,group:string = '',data:any = null,cbOnResponse:(error: any, response: T) => void  = null) => {
-        if(this.session || (action == 'auth' && request == 'login')){
+        if(this._session || (action == 'auth' && request == 'login')){
             let info: SocketPackageInfo = { action,request,group,packageID:this.packageID } ;
             let body:SocketPackage      = { info, data}
             if(cbOnResponse) {
@@ -219,5 +219,9 @@ export class WebSocketBrowserClient {
 
     public set whenConnected(oc: () => void) {
         this._whenConnected = oc;
+    }
+
+    public get session(){
+        return this._session;
     }
 }

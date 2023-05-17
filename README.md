@@ -44,6 +44,8 @@ interface NewUserResponse { }
 let globalUsers: User[] = [];
 
 const AfterConnectedProcedure = () => {
+    // after connection is done, you can read de session data return by the server
+    let sessionData = wsClient.session
     // send a echo message to the server and wait for a response
     wsClient.echo({msg:'testing connection ...'},(error,response) => {
         console.log({error,response});
@@ -113,3 +115,8 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
 ## Keywords
 
 [websocket](https://www.npmjs.com/search?q=keywords:web%20socket), [websocket client](https://www.npmjs.com/search?q=keywords:websocket%20client), [websocket browser client](https://www.npmjs.com/search?q=keywords:websocket%20browser%20client), [websocket client browser](https://www.npmjs.com/search?q=keywords:websocket%20client%20browser), [websocket client browser](https://www.npmjs.com/search?q=keywords:websocket%20client%20browser), [socket client browser](https://www.npmjs.com/search?q=keywords:socket%20client%20browser)
+
+## Change Log
+
+### 0.0.3
+    - session is now available after connection is done. [wsClient.session]
