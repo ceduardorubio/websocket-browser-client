@@ -30,13 +30,17 @@ wsClient.ifAuthenticationFails = (authenticationError) => {
     console.error({authenticationError});
 }
 // set what to do if connection is lost
-wsClient.onConnectionLost = (connectionLostError,connectionLostInfo) => {
+wsClient.onConnectionError = (connectionLostError,connectionLostInfo) => {
     console.error({connectionLostError,connectionLostInfo});    
+}
+
+wsClient.onConnectionClose = (connectionCloseError,connectionCloseEvent) => {
+    console.log({connectionCloseError,connectionCloseEvent});
 }
 // execute the connection to the server
 wsClient.connectTo('ws://localhost:8080',authCredentials);
 ```
-You can rewrite the `whenConnected`, `ifAuthenticationFails` and `onConnectionLost` methods anytime before the `connectTo` method is called.
+You can rewrite the `whenConnected`, `ifAuthenticationFails` and `onConnectionError` methods anytime before the `connectTo` method is called.
 ## API: After Connection Setup
 ```typescript
 interface User { }

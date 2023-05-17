@@ -43,7 +43,8 @@ export class WebSocketBrowserClient {
     private authCallbackOnReconnect    :boolean = true;
     private reconnectionTimeout        :number  = 2_000;
 
-    private _onConnectionLost :(error: any, info: any) => void         = console.error;
+    private _onConnectionError :(error: any, info: any) => void         = console.error;
+    private _onConnectionClose :(error: any, info: any) => void         = console.log;
     private _whenConnected :() => void                                 = () => {};
     private _ifAuthenticationFails :(authenticationError: any) => void = () => {};
    
@@ -56,15 +57,13 @@ export class WebSocketBrowserClient {
     }
 
     private ReloadConnection = (reconnectionWait:number = this.reconnectionTimeout) => {
-        if(!this.reconnect ) {
-            this._onConnectionLost('auth failed',null);
-        } else {
+        if(this.reconnect ) {
             setTimeout(() => {
                 try {
                     this.ClearWebSocket();
                     this.StartSocket();                
                 } catch(e){
-                    this._onConnectionLost('connection error',e);
+                    this._onConnectionError('connection error',e);
                 }
             },reconnectionWait);
         }
@@ -79,9 +78,9 @@ export class WebSocketBrowserClient {
 
     private StartSocket = () => {
         this.ResetControllers();
-        this.webSocket          = new WebSocket(this.url);
-        this.webSocket.onerror   = this.onConnError;
-        this.webSocket.onclose   = this.onConnError ;
+        this.webSocket           = new WebSocket(this.url);
+        this.webSocket.onerror   = this.onConnError;         // error
+        this.webSocket.onclose   = this.onConnClose ;        // close
         this.webSocket.onopen    = this.onConnOpen;
         this.webSocket.onmessage = this.onConnMessage;
     }
@@ -97,8 +96,12 @@ export class WebSocketBrowserClient {
     }
 
     private onConnError = (e:any) => {
-        this._onConnectionLost('connection lost error',e);
+        this._onConnectionError('connection error',e);
         if (this.onConnectionErrorReconnect) this.ReloadConnection();
+    }
+
+    private onConnClose = (e:any) => {
+        this._onConnectionClose('connection closed',e);
     }
 
     private onConnMessage = (xMsg:any) => {
@@ -106,7 +109,7 @@ export class WebSocketBrowserClient {
         try {
             packageResponse = JSON.parse(xMsg.data);
         } catch (e) {
-            return this._onConnectionLost( 'invalid incoming data: ', xMsg.data);
+            this._onConnectionError( 'invalid incoming data: ', xMsg.data);
         }
         this.HandleServerMessage(packageResponse);
     }
@@ -171,8 +174,8 @@ export class WebSocketBrowserClient {
         if(u.startsWith('/') ) u = 'ws://' + window.location.hostname + u;
         this.url                      = u;
         this.reconnect                = true;
-        this.authCredentials          = newAuthCredentials || this.authCredentials;
         this.hasBeingConnectedBefore  = false;
+        this.authCredentials          = newAuthCredentials || this.authCredentials;
         this.ReloadConnection(1);
         return this;
     }
@@ -209,8 +212,12 @@ export class WebSocketBrowserClient {
         return null;
     }
 
-    public set onConnectionLost(oce: (error:any,info:any) => void) {
-        this._onConnectionLost = oce;
+    public set onConnectionError(oce: (error:any,info:any) => void) {
+        this._onConnectionError = oce;
+    }
+
+    public set onConnectionClose(occ: (error:any,info:any) => void) {
+        this._onConnectionClose = occ;
     }
 
     public set ifAuthenticationFails(oaf: (authenticationError:any) => void) {
