@@ -148,3 +148,5 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
     - session is now available after connection is done. [wwsClient.sessión
 ### 0.0.5
     - with src folder 
+### 0.1.5
+    - Fix type module error
