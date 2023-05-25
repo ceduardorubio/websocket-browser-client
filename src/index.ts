@@ -47,13 +47,16 @@ export class WebSocketBrowserClient {
     private _onConnectionClose :(error: any, info: any) => void         = console.log;
     private _whenConnected :() => void                                 = () => {};
     private _ifAuthenticationFails :(authenticationError: any) => void = () => {};
+
+    private log :(msg:any ) => void | null = null;
    
-    constructor(connectionOptions:SocketConnectorOptions = null) {
+    constructor(connectionOptions:SocketConnectorOptions = null,Log: (msg:any ) => void | null= null) {
         if(connectionOptions){
             this.onConnectionErrorReconnect = connectionOptions.onConnectionErrorReconnect || this.onConnectionErrorReconnect;
             this.authCallbackOnReconnect    = connectionOptions.authCallbackOnReconnect    || this.authCallbackOnReconnect;
             this.reconnectionTimeout        = connectionOptions.reconnectionTimeout        || this.reconnectionTimeout;
         }
+        this.log = Log;
     }
 
     private ReloadConnection = (reconnectionWait:number = this.reconnectionTimeout) => {
@@ -105,6 +108,7 @@ export class WebSocketBrowserClient {
     }
 
     private onConnMessage = (xMsg:any) => {
+        if(this.log) this.log(xMsg);
         let packageResponse:SocketPackageResponse = null;
         try {
             packageResponse = JSON.parse(xMsg.data);

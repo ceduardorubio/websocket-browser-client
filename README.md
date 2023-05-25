@@ -15,7 +15,28 @@ npm install --save ws-browser-client
 ```typescript
 import { WebSocketBrowserClient } from "ws-browser-client";
 
-export const wsClient = new WebSocketBrowserClient();
+let options = null;
+/*  default values
+    options = {
+        onConnectionErrorReconnect: true,
+        authCallbackOnReconnect:true,
+        reconnectionTimeout: 2_000
+    }
+*/
+
+let Logger = null;
+/*  default values
+    Logger = {
+        log: console.log,
+        error: console.error,
+        warn: console.warn,
+        info: console.info,
+        debug: console.debug
+    }
+
+    use this to log all incoming messages
+*/
+export const wsClient = new WebSocketBrowserClient(options,Logger);
 
 let authCredentials = {
     //... your credentials
