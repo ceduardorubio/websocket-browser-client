@@ -3,9 +3,13 @@
 ## Description
 A web socket browser client for web socket process connector servers. Use this client to connect to a web socket server and send and receive messages.
 
-USE THIS CLIENT TO CONNECT TO A WEB SOCKET SERVER SET WITH 
+## Website
+[websocket-browser-client](https://ceduardorubio.github.io/websocketbrowserclient/)
+
+USE THIS CLIENT TO CONNECT TO A WEB SOCKET SERVER SET WITH:
+
 [websocket node server](https://www.npmjs.com/package/ws-node-server)
-[web socket process connector](https://www.npmjs.com/package/web-socket-processes-connector)
+
 
 ## Installation
 ```bash
