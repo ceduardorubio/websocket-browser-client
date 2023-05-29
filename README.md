@@ -4,8 +4,9 @@
 A web socket browser client for web socket process connector servers. Use this client to connect to a web socket server and send and receive messages.
 
 ## Website
-[websocket-browser-client](https://ceduardorubio.github.io/websocketbrowserclient/)
+[websocket-browser-client](https://ceduardorubio.github.io/websocketbrowserclient/) (under construction)
 
+## Usage
 USE THIS CLIENT TO CONNECT TO A WEB SOCKET SERVER SET WITH:
 
 [websocket node server](https://www.npmjs.com/package/ws-node-server)
@@ -89,6 +90,11 @@ const AfterConnectedProcedure = () => {
             globalUsers = users;
         }
     });
+
+    // send a broadcast message to all clients in the group1, except the sender, no matter the group the sender is in 
+    wsClient.Broadcast("newUser","group1" ,{name:"John Doe"});
+    // send a broadcast message to all clients 
+    wsClient.Broadcast("keepAlive",null  ,{name: sessionData["..."]});
     // join the group1 to receive messages from the server for this group
     wsClient.joinGroup('group1');
     // leave the group1
@@ -154,3 +160,5 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
     - with src folder 
 ### 0.1.5
     - Fix type module error
+### 0.1.8
+    - Broadcast message to all clients in a group
