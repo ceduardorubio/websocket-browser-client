@@ -229,7 +229,7 @@ export class WebSocketBrowserClient {
     }
 
     public sentToClient = <T = any>(uuid:string,data:T,cb:(error: any, response: {sent:boolean}) => void = null) => {
-        this.Send('channel','sentToClient',uuid,data,cb);
+        this.Send('channel','sendToClient',uuid,data,cb);
     }
 
     public onClientMessageReceived = <T = any>(cb:(incomingData: {fromUUID:string,data:T}) => void) => {
