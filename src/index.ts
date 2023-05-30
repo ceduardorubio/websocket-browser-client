@@ -20,7 +20,7 @@ interface SocketListeners {
     [key: string]:  ((response: any) => void)[]
 }
 
-type SocketAction = 'group' | 'call' | 'auth' | 'broadcast';
+type SocketAction = 'group' | 'call' | 'auth' | 'broadcast' | 'channel';
 interface SocketConnectorOptions {
     onConnectionErrorReconnect?: boolean,
     authCallbackOnReconnect?   : boolean,
@@ -80,7 +80,6 @@ export class WebSocketBrowserClient {
     }
 
     private StartSocket = () => {
-        this.ResetControllers();
         this.webSocket           = new WebSocket(this.url);
         this.webSocket.onerror   = this.onConnError;         // error
         this.webSocket.onclose   = this.onConnClose ;        // close
@@ -207,6 +206,34 @@ export class WebSocketBrowserClient {
     public onMessageReceived = <T = any>(subject:string,cb:(incomingData: T) => void) => {
         if(!this.broadcastListeners[subject]) this.broadcastListeners[subject] = [];
         this.broadcastListeners[subject].push(cb);
+    }
+
+    public getAvailableClients = (cb:(error: any, response: {uuid:string,publicAlias:string}[]) => void = null) => {
+        this.Send('channel','getAvailableClients',null,null,cb);
+    }
+
+    public updatePublicAlias = (publicAlias:string,cb:(error: any, response: {currentAlias:string}) => void = null) => {
+        this.Send('channel','updatePublicAlias',null,{publicAlias},cb);
+    }
+
+    public getPublicAlias = (cb:(error: any, response: {currentAlias:string}) => void = null) => {
+        this.Send('channel','getPublicAlias',null,{},cb);
+    }
+
+    public updatePublicAvailability = (isAvailable:boolean,cb:(error: any, response: {currentAvailability:boolean}) => void = null) => {
+        this.Send('channel','updatePublicAvailability',null,{isAvailable},cb);
+    }
+
+    public getPublicAvailability = (cb:(error: any, response: {currentAvailability:boolean}) => void = null) => {
+        this.Send('channel','getPublicAvailability',null,{},cb);
+    }
+
+    public sentToClient = <T = any>(uuid:string,data:T,cb:(error: any, response: {sent:boolean}) => void = null) => {
+        this.Send('channel','sentToClient',uuid,data,cb);
+    }
+
+    public onClientMessageReceived = <T = any>(cb:(incomingData: {fromUUID:string,data:T}) => void) => {
+        this.onMessageReceived<{fromUUID:string,data:T}>('msgFromClient',cb);
     }
 
     public Broadcast = <T = any>(subject:string,group:string| null,data:T) => {

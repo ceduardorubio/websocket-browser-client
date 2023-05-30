@@ -96,6 +96,47 @@ const AfterConnectedProcedure = () => {
     // send a broadcast message to all clients 
     wsClient.Broadcast("keepAlive",null  ,{name: sessionData["..."]});
     // join the group1 to receive messages from the server for this group
+
+    let connectedClients:{uuid:string,publicAlias:string}[] = []
+
+    // get all connected ws-clients
+    wsClient.getAvailableClients((err:any,clients:{uuid:string,publicAlias:string}[]) =>{
+        connectedClients = clients;
+    })
+    // set the public availability of this client as true (available to receive direct messages from other clients)
+    wsClient.updatePublicAvailability(true,(error: any, response: {currentAvailability:boolean}) => {
+        if(error) {
+            console.log('Error:',error);
+            return;
+        } else {
+            console.log({currentAvailability});
+        }
+    });
+    // when a client sends a message to this client, this listener will be called
+    wsClient.onClientMessageReceived<any>((error,incomingData: {fromUUID:string,data:any}) => {
+        // get the public alias of the client that sent the message
+        let {fromUUID,data} = incomingData;
+        let clientAlias = connectedClients.find(client => client.uuid === fromUUID).publicAlias;
+        console.log(`Message from ${clientAlias}:`,data);
+    });
+
+    let selectedUserPublicAlias = '...';
+    let selectedUserUUID = connectedClients.find(client => client.publicAlias === selectedUserPublicAlias).uuid;
+
+    let msg = {
+        ack: "ok!!! message received ",
+    }
+
+    // send a message to a specific client with the its uuid
+    wsClient.sentToClient<any>(selectedUserUUID,msg,(error: any, response: {sent:boolean})=> {
+        if(error) {
+            console.log('Error:',error);
+            return;
+        } else {
+            console.log({sent});
+        }
+    });
+
     wsClient.joinGroup('group1');
     // leave the group1
     wsClient.leaveGroup('group1');
@@ -150,15 +191,20 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
 
 ## Keywords
 
-[websocket](https://www.npmjs.com/search?q=keywords:web%20socket), [websocket client](https://www.npmjs.com/search?q=keywords:websocket%20client), [websocket browser client](https://www.npmjs.com/search?q=keywords:websocket%20browser%20client), [websocket client browser](https://www.npmjs.com/search?q=keywords:websocket%20client%20browser), [websocket client browser](https://www.npmjs.com/search?q=keywords:websocket%20client%20browser), [socket client browser](https://www.npmjs.com/search?q=keywords:socket%20client%20browser)
+[websocket](https://www.npmjs.com/search?q=keywords:web%20socket), [websocket client](https://www.npmjs.com/search?q=keywords:websocket%20client), [websocket browser client](https://www.npmjs.com/search?q=keywords:websocket%20browser%20client)
 
 ## Change Log
 
 ### 0.0.3
-    - session is now available after connection is done. [wwsClient.sessión
+    - session is now available after connection is done. [wwsClient.session]
 ### 0.0.5
     - with src folder 
 ### 0.1.5
     - Fix type module error
 ### 0.1.8
     - Broadcast message to all clients in a group
+### 0.2.0
+    - Get a list all connected clients (alias and uuid)
+    - Send message to a specific client
+    - Update public availability
+    - Update public alias
