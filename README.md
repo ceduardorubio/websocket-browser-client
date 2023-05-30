@@ -25,7 +25,8 @@ let options = null;
     options = {
         onConnectionErrorReconnect: true,
         authCallbackOnReconnect:true,
-        reconnectionTimeout: 2_000
+        reconnectionTimeout: 2_000,
+        maxReconnectionAttempts: 10,
     }
 */
 
@@ -58,10 +59,16 @@ wsClient.ifAuthenticationFails = (authenticationError) => {
 }
 // set what to do if connection is lost
 wsClient.onConnectionError = (connectionLostError,connectionLostInfo) => {
+    // error types:
+    // invalidIncomingData: the server sent invalid format data
+    // connectionError: connection failed
+    // maxReconnectionAttempts: the client tried to reconnect maxReconnectionAttempts times to the server but the server is not available
     console.error({connectionLostError,connectionLostInfo});    
 }
 
 wsClient.onConnectionClosed = (connectionCloseError,connectionCloseEvent) => {
+    // error types:
+    // connectionClosed: the server closed the connection
     console.log({connectionCloseError,connectionCloseEvent});
 }
 // execute the connection to the server

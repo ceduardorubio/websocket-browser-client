@@ -25,6 +25,7 @@ interface SocketConnectorOptions {
     onConnectionErrorReconnect?: boolean,
     authCallbackOnReconnect?   : boolean,
     reconnectionTimeout?       : number,
+    maxReconnectionAttempts?   : number
 }
 export class WebSocketBrowserClient {
     public webSocket: WebSocket = null;
@@ -42,6 +43,8 @@ export class WebSocketBrowserClient {
     private onConnectionErrorReconnect :boolean = true;
     private authCallbackOnReconnect    :boolean = true;
     private reconnectionTimeout        :number  = 2_000;
+    private maxReconnectionAttempts    :number  = 10;
+    private reconnectionAttempts       :number  = 0;
 
     private _onConnectionError :(error: any, info: any) => void         = console.error;
     private _onConnectionClose :(error: any, info: any) => void         = console.log;
@@ -55,6 +58,7 @@ export class WebSocketBrowserClient {
             this.onConnectionErrorReconnect = connectionOptions.onConnectionErrorReconnect || this.onConnectionErrorReconnect;
             this.authCallbackOnReconnect    = connectionOptions.authCallbackOnReconnect    || this.authCallbackOnReconnect;
             this.reconnectionTimeout        = connectionOptions.reconnectionTimeout        || this.reconnectionTimeout;
+            this.maxReconnectionAttempts    = connectionOptions.maxReconnectionAttempts    || this.maxReconnectionAttempts;
         }
         this.log = Log;
     }
@@ -64,17 +68,22 @@ export class WebSocketBrowserClient {
     }
 
     private ReloadConnection = (reconnectionWait:number = this.reconnectionTimeout) => {
-        if(this.reconnect ) {
-            console.log("Trying to connect");
-            setTimeout(() => {
-                try {
-                    this.ClearWebSocket();
-                    this.StartSocket();                
-                } catch(e){
-                    this._onConnectionError('connection error',e);
-                    this.ReloadConnection();
-                }
-            },reconnectionWait);
+        if(this.reconnectionAttempts < this.maxReconnectionAttempts){
+            if(this.reconnect) {
+                console.log("Trying to connect");
+                setTimeout(() => {
+                    try {
+                        this.ClearWebSocket();
+                        this.StartSocket();                
+                    } catch(e){
+                        this._onConnectionError('connectionError',e);
+                        this.reconnectionAttempts++;
+                        this.ReloadConnection();
+                    }
+                },reconnectionWait);
+            }
+        } else {
+            this._onConnectionError('maxReconnectionAttempts','max reconnection attempts reached');
         }
     }
 
@@ -104,12 +113,12 @@ export class WebSocketBrowserClient {
     }
 
     private onConnError = (e:any) => {
-        this._onConnectionError('connection error',e);
+        this._onConnectionError('connectionError',e);
         if (this.onConnectionErrorReconnect) this.ReloadConnection();
     }
 
     private onConnClose = (e:any) => {
-        if (this.session) this._onConnectionClose('connection closed',e);
+        if (this.session) this._onConnectionClose('connectionClosed',e);
         if (this.onConnectionErrorReconnect) this.ReloadConnection();
 
     }
@@ -120,7 +129,7 @@ export class WebSocketBrowserClient {
         try {
             packageResponse = JSON.parse(xMsg.data);
         } catch (e) {
-            this._onConnectionError( 'invalid incoming data: ', xMsg.data);
+            this._onConnectionError( 'invalidIncomingData', xMsg.data);
         }
         this.HandleServerMessage(packageResponse);
     }
@@ -133,6 +142,7 @@ export class WebSocketBrowserClient {
                 this._ifAuthenticationFails(error);
             } else {
                 this._session = sessionData;
+                this.reconnectionAttempts = 0;
                 if (this.hasBeingConnectedBefore) {
                     if (this.authCallbackOnReconnect) this._whenConnected();
                 } else {
