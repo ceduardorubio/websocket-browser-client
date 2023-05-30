@@ -106,6 +106,8 @@ export class WebSocketBrowserClient {
 
     private onConnClose = (e:any) => {
         if (this.session) this._onConnectionClose('connection closed',e);
+        if (this.onConnectionErrorReconnect) this.ReloadConnection();
+
     }
 
     private onConnMessage = (xMsg:any) => {
