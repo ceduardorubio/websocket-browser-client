@@ -72,14 +72,8 @@ export class WebSocketBrowserClient {
             if(this.reconnect) {
                 console.log("Trying to connect");
                 setTimeout(() => {
-                    try {
-                        this.ClearWebSocket();
-                        this.StartSocket();                
-                    } catch(e){
-                        this._onConnectionError('connectionError',e);
-                        this.reconnectionAttempts++;
-                        this.ReloadConnection();
-                    }
+                    this.ClearWebSocket();
+                    this.StartSocket(); 
                 },reconnectionWait);
             }
         } else {
@@ -114,6 +108,7 @@ export class WebSocketBrowserClient {
 
     private onConnError = (e:any) => {
         this._onConnectionError('connectionError',e);
+        this.reconnectionAttempts++;
         if (this.onConnectionErrorReconnect) this.ReloadConnection();
     }
 
