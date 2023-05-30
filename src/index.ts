@@ -43,7 +43,7 @@ export class WebSocketBrowserClient {
     private onConnectionErrorReconnect :boolean = true;
     private authCallbackOnReconnect    :boolean = true;
     private reconnectionTimeout        :number  = 2_000;
-    private maxReconnectionAttempts    :number  = 10;
+    private maxReconnectionAttempts    :number  = 20;
     private reconnectionAttempts       :number  = 0;
 
     private _onConnectionError :(error: any, info: any) => void         = console.error;
@@ -114,6 +114,7 @@ export class WebSocketBrowserClient {
 
     private onConnClose = (e:any) => {
         if (this.session) this._onConnectionClose('connectionClosed',e);
+        this.reconnectionAttempts++;
         if (this.onConnectionErrorReconnect) this.ReloadConnection();
 
     }

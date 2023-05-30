@@ -26,7 +26,7 @@ let options = null;
         onConnectionErrorReconnect: true,
         authCallbackOnReconnect:true,
         reconnectionTimeout: 2_000,
-        maxReconnectionAttempts: 10,
+        maxReconnectionAttempts: 20,
     }
 */
 
