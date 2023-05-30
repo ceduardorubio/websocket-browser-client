@@ -144,7 +144,7 @@ export class WebSocketBrowserClient {
                 listeners.forEach(fn => fn(response));
             }
         } else {
-            let isServerResponse = info.action == "call" || info.action == "group" || info.action == "auth"
+            let isServerResponse = info.action == "call" || info.action == "group" || info.action == "auth" || info.action == "channel";
             if(isServerResponse){
                 let { packageID } = info;
                 if(this.onServerResponse[packageID]){
