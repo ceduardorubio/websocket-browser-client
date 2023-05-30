@@ -208,3 +208,5 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
     - Send message to a specific client
     - Update public availability
     - Update public alias
+### 0.2.5
+    - Fix error auto-reconnecting after connection is lost

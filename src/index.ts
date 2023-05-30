@@ -59,6 +59,10 @@ export class WebSocketBrowserClient {
         this.log = Log;
     }
 
+    public isSocketConnected = () => {
+        return this.webSocket && this.webSocket.readyState == WebSocket.OPEN;
+    }
+
     private ReloadConnection = (reconnectionWait:number = this.reconnectionTimeout) => {
         if(this.reconnect ) {
             console.log("Trying to connect");
@@ -162,13 +166,17 @@ export class WebSocketBrowserClient {
 
     private Send = <T = any> (action:SocketAction,request:string | number,group:string = '',data:any = null,cbOnResponse:(error: any, response: T) => void  = null) => {
         if(this._session || (action == 'auth' && request == 'login')){
-            let info: SocketPackageInfo = { action,request,group,packageID:this.packageID } ;
-            let body:SocketPackage      = { info, data}
-            if(cbOnResponse) {
-                this.onServerResponse[this.packageID] = cbOnResponse;
-                this.packageID++;
+            if(this.isSocketConnected()){
+                let info: SocketPackageInfo = { action,request,group,packageID:this.packageID } ;
+                let body:SocketPackage      = { info, data}
+                if(cbOnResponse) {
+                    this.onServerResponse[this.packageID] = cbOnResponse;
+                    this.packageID++;
+                }
+                this.webSocket.send(JSON.stringify(body));
+            } else {
+                cbOnResponse('socket is not connected',null);
             }
-            this.webSocket.send(JSON.stringify(body));
         } else {
             cbOnResponse('not authenticated',null);
         }
