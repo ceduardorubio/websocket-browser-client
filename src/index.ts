@@ -61,12 +61,14 @@ export class WebSocketBrowserClient {
 
     private ReloadConnection = (reconnectionWait:number = this.reconnectionTimeout) => {
         if(this.reconnect ) {
+            console.log("Trying to connect");
             setTimeout(() => {
                 try {
                     this.ClearWebSocket();
                     this.StartSocket();                
                 } catch(e){
                     this._onConnectionError('connection error',e);
+                    this.ReloadConnection();
                 }
             },reconnectionWait);
         }
