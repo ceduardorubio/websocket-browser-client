@@ -28,9 +28,9 @@ interface SocketConnectorOptions {
     maxReconnectionAttempts?   : number
 }
 export class WebSocketBrowserClient {
-    public webSocket: WebSocket = null;
+    public  webSocket: WebSocket = null;
     private packageID: number    = 0;
-    private _session  : any       = null
+    private _session  : any      = null
 
     private onServerResponse:SocketServerCallsStack = {};
     private broadcastListeners :SocketListeners     = {};
@@ -83,7 +83,7 @@ export class WebSocketBrowserClient {
 
     private ResetControllers = () => {
         this.packageID          = 0;
-        this._session            = null;
+        this._session           = null;
         this.onServerResponse   = {};
         this.broadcastListeners = {};
     }
@@ -226,7 +226,12 @@ export class WebSocketBrowserClient {
         this.broadcastListeners[subject].push(cb);
     }
 
-    public getAvailableClients = (cb:(error: any, response: {uuid:string,publicAlias:string}[]) => void = null) => {
+
+
+
+    // ENABLE CLIENT DIRECT MESSAGING
+
+    public getAvailableClients = (cb:(error: any, response: {uuid:string,publicAlias:string,isAvailable:boolean,publicInmutableData:any,connected:boolean}[]) => void = null) => {
         this.Send('channel','getAvailableClients',null,null,cb);
     }
 
@@ -253,6 +258,20 @@ export class WebSocketBrowserClient {
     public onClientMessageReceived = <T = any>(cb:(incomingData: {fromUUID:string,data:T}) => void) => {
         this.onMessageReceived<{fromUUID:string,data:T}>('msgFromClient',cb);
     }
+
+    public onClientUpdate = (cb:(incomingData: {uuid:string,publicAlias:string,isAvailable:boolean,publicInmutableData:any,connected:boolean}) => void) => {
+        this.onMessageReceived<{uuid:string,publicAlias:string,isAvailable:boolean,publicInmutableData:any,connected:boolean}>('__updateClientsState',cb);
+    }
+
+    public setAvailable = (cb:(error: any, response: {currentAvailability:boolean}) => void = null) => {
+        this.Send('channel','updatePublicAvailability',null,{isAvailable:true},cb);
+    }
+
+    public setUnavailable = (cb:(error: any, response: {currentAvailability:boolean}) => void = null) => {
+        this.Send('channel','updatePublicAvailability',null,{isAvailable:false},cb);
+    }
+
+    /// BROADCASTING
 
     public Broadcast = <T = any>(subject:string,group:string| null,data:T) => {
         this.Send('broadcast',subject,group,data,null);

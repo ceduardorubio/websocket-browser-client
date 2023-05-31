@@ -104,10 +104,10 @@ const AfterConnectedProcedure = () => {
     wsClient.Broadcast("keepAlive",null  ,{name: sessionData["..."]});
     // join the group1 to receive messages from the server for this group
 
-    let connectedClients:{uuid:string,publicAlias:string}[] = []
+    let connectedClients:{uuid:string,publicAlias:string,isAvailable:boolean,publicInmutableData:any,connected:boolean}[] = []
 
     // get all connected ws-clients
-    wsClient.getAvailableClients((err:any,clients:{uuid:string,publicAlias:string}[]) =>{
+    wsClient.getAvailableClients((err:any,clients:{uuid:string,publicAlias:string,isAvailable:boolean,publicInmutableData:any,connected:boolean}[]) =>{
         connectedClients = clients;
     })
     // set the public availability of this client as true (available to receive direct messages from other clients)
@@ -119,6 +119,37 @@ const AfterConnectedProcedure = () => {
             console.log({currentAvailability});
         }
     });
+
+    // listen to all clients updates
+    // when a client connects or disconnects, this listener will be called
+    // when a client updates its public alias, this listener will be called
+    // when a client updates its public availability, this listener will be called
+    ws.onClientUpdate((incomingData: {uuid:string,publicAlias:string,isAvailable:boolean,publicInmutableData:any,connected:boolean}) =>{
+        // get the public alias of the client that sent the message
+        let {uuid,publicAlias,isAvailable,publicInmutableData,connected} = incomingData;
+        let findClient = connectedClients.find(client => client.uuid === uuid);
+        if(findClient) {
+            findClient.publicAlias = publicAlias;
+            findClient.isAvailable = isAvailable;
+            findClient.publicInmutableData = publicInmutableData;
+            findClient.connected = connected;
+        } else {
+            connectedClients.push({uuid,publicAlias,isAvailable,publicInmutableData,connected});
+        }
+
+        connectedClients = connectedClients.filter(client => client.connected);
+    })
+
+    // set the public availability of this client as true (available to receive and send direct messages from other clients, and receive update client broadcast messages from the server)
+    ws.setAvailable((error: any, response: {currentAvailability:boolean})=>{
+        console.log({currentAvailability});
+    });
+
+    // set the public availability of this client as false (not available to receive and send direct messages from other clients, and receive update client broadcast messages from the server)
+    ws.setUnavailable((error: any, response: {currentAvailability:boolean})=>{
+        console.log({currentAvailability});
+    });
+
     // when a client sends a message to this client, this listener will be called
     wsClient.onClientMessageReceived<any>((error,incomingData: {fromUUID:string,data:any}) => {
         // get the public alias of the client that sent the message
@@ -217,3 +248,6 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
     - Update public alias
 ### 0.2.5
     - Fix error auto-reconnecting after connection is lost
+### 0.3.0
+    - Availability of the client controls the ability to receive direct messages from other clients, and receive update client broadcast messages from the server
+    - Listening on update client broadcast messages from the server
