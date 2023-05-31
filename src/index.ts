@@ -188,11 +188,11 @@ export class WebSocketBrowserClient {
         }
     }
 
-    public connectTo = <T = any>(websocketServerURL:string,newAuthCredentials:T = null) => {
+    public connectTo = <T = any>(websocketServerURL:string = "/",newAuthCredentials:T = null) => {
         let u = websocketServerURL;
         if(u.startsWith('http://'))  u = u.replace('http://','ws://')
         if(u.startsWith('https://')) u = u.replace('https://','wss://')
-        if(u.startsWith('/') ) u = 'ws://' + window.location.hostname + u;
+        if(u.startsWith('/') ) u = 'ws://' + window.location.host + u;
         this.url                      = u;
         this.reconnect                = true;
         this.hasBeingConnectedBefore  = false;

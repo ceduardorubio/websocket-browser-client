@@ -251,3 +251,6 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
 ### 0.3.0
     - Availability of the client controls the ability to receive direct messages from other clients, and receive update client broadcast messages from the server
     - Listening on update client broadcast messages from the server
+### 0.3.1
+    - fix port detection when websocketServerURL = "/" [ connectTo(websocketServerURL,newAuthCredentials) ] 
+    - websocketServerURL default value is now "/" 
