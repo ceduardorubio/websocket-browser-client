@@ -25,7 +25,8 @@ interface SocketConnectorOptions {
     onConnectionErrorReconnect?: boolean,
     authCallbackOnReconnect?   : boolean,
     reconnectionTimeout?       : number,
-    maxReconnectionAttempts?   : number
+    maxReconnectionAttempts?   : number,
+    logConnectionTry?          : boolean
 }
 export class WebSocketBrowserClient {
     public  webSocket: WebSocket = null;
@@ -45,6 +46,7 @@ export class WebSocketBrowserClient {
     private reconnectionTimeout        :number  = 2_000;
     private maxReconnectionAttempts    :number  = 20;
     private reconnectionAttempts       :number  = 0;
+    private logConnectionTry           :boolean = false;
 
     private _onConnectionError :(error: any, info: any) => void         = console.error;
     private _onConnectionClose :(error: any, info: any) => void         = console.log;
@@ -59,6 +61,7 @@ export class WebSocketBrowserClient {
             this.authCallbackOnReconnect    = connectionOptions.authCallbackOnReconnect    || this.authCallbackOnReconnect;
             this.reconnectionTimeout        = connectionOptions.reconnectionTimeout        || this.reconnectionTimeout;
             this.maxReconnectionAttempts    = connectionOptions.maxReconnectionAttempts    || this.maxReconnectionAttempts;
+            this.logConnectionTry           = connectionOptions.logConnectionTry           || this.logConnectionTry;
         }
         this.log = Log;
     }
@@ -70,7 +73,7 @@ export class WebSocketBrowserClient {
     private ReloadConnection = (reconnectionWait:number = this.reconnectionTimeout) => {
         if(this.reconnectionAttempts < this.maxReconnectionAttempts){
             if(this.reconnect) {
-                console.log("Trying to connect");
+                if(this.logConnectionTry) console.log("Trying to connect to :" + this.url + " in " + reconnectionWait + "ms");
                 setTimeout(() => {
                     this.ClearWebSocket();
                     this.StartSocket(); 

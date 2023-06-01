@@ -20,13 +20,14 @@ npm install --save ws-browser-client
 ```typescript
 import { WebSocketBrowserClient } from "ws-browser-client";
 
-let options = null;
+let connectionOptions = null;
 /*  default values
-    options = {
+    connectionOptions = {
         onConnectionErrorReconnect: true,
         authCallbackOnReconnect:true,
         reconnectionTimeout: 2_000,
         maxReconnectionAttempts: 20,
+        logConnectionTry: false,
     }
 */
 
@@ -42,7 +43,7 @@ let Logger = null;
 
     use this to log all incoming messages
 */
-export const wsClient = new WebSocketBrowserClient(options,Logger);
+export const wsClient = new WebSocketBrowserClient(connectionOptions,Logger);
 
 let authCredentials = {
     //... your credentials
@@ -254,3 +255,6 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
 ### 0.3.1
     - fix port detection when websocketServerURL = "/" [ connectTo(websocketServerURL,newAuthCredentials) ] 
     - websocketServerURL default value is now "/" 
+### 0.3.2
+    - logConnectionTry: connectionOptions.connectionOptions (default: false)
+    logs the connection try
