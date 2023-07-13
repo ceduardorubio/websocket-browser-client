@@ -258,3 +258,5 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
 ### 0.3.2
     - logConnectionTry: connectionOptions.connectionOptions (default: false)
     logs the connection try
+### 0.3.3
+    - RemoveOnMessageReceived: remove a listener from the onMessageReceived listeners list

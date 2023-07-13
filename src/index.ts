@@ -229,8 +229,12 @@ export class WebSocketBrowserClient {
         this.broadcastListeners[subject].push(cb);
     }
 
-
-
+    public RemoveOnMessageReceived = <T = any>(subject:string,cb:(incomingData: T) => void) => {
+        if(this.broadcastListeners[subject]){
+            let index = this.broadcastListeners[subject].indexOf(cb);
+            if(index > -1) this.broadcastListeners[subject].splice(index,1);
+        }
+    }
 
     // ENABLE CLIENT DIRECT MESSAGING
 
