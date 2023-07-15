@@ -260,3 +260,5 @@ Carlos Velasquez - [ceduardorubio](https://github.com/ceduardorubio)
     logs the connection try
 ### 0.3.3
     - RemoveOnMessageReceived: remove a listener from the onMessageReceived listeners list
+### 0.4.0
+    - RemoveOnMessageReceived: using uuid to remove a listener from the onMessageReceived listeners list

@@ -17,7 +17,12 @@ interface SocketServerCallsStack {
     [key: number]:  (error: any, response: any) => void
 }
 interface SocketListeners {
-    [key: string]:  ((response: any) => void)[]
+    [key: string]:  SocketMethod[]
+}
+
+interface SocketMethod {
+    uuid: string,
+    fn: (response: any) => void
 }
 
 type SocketAction = 'group' | 'call' | 'auth' | 'broadcast' | 'channel';
@@ -158,7 +163,7 @@ export class WebSocketBrowserClient {
             let { request } = info;
             if(this.broadcastListeners[request]) {
                 let listeners = this.broadcastListeners[request];
-                listeners.forEach(fn => fn(response));
+                listeners.forEach(m => m.fn(response));
             }
         } else {
             let isServerResponse = info.action == "call" || info.action == "group" || info.action == "auth" || info.action == "channel";
@@ -226,12 +231,15 @@ export class WebSocketBrowserClient {
 
     public onMessageReceived = <T = any>(subject:string,cb:(incomingData: T) => void) => {
         if(!this.broadcastListeners[subject]) this.broadcastListeners[subject] = [];
-        this.broadcastListeners[subject].push(cb);
+        let uuid = generateUUID();
+        let socketMethod:SocketMethod = { fn:cb,uuid:uuid };
+        this.broadcastListeners[subject].push(socketMethod);
+        return uuid
     }
 
-    public RemoveOnMessageReceived = <T = any>(subject:string,cb:(incomingData: T) => void) => {
+    public RemoveOnMessageReceived = <T = any>(subject:string,uuidMethod:string) => {
         if(this.broadcastListeners[subject]){
-            let index = this.broadcastListeners[subject].indexOf(cb);
+            let index = this.broadcastListeners[subject].findIndex(c => c.uuid == uuidMethod);
             if(index > -1) this.broadcastListeners[subject].splice(index,1);
         }
     }
@@ -314,4 +322,15 @@ export class WebSocketBrowserClient {
     public get isConnected(){
         return this._session != null;
     }
+}
+
+function generateUUID() {
+    let d = new Date().getTime();
+    if (window.performance && typeof window.performance.now === "function") d += performance.now();
+    let uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        let r = (d+Math.random()*16)%16 | 0;
+        d = Math.floor(d/16);
+        return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+    });
+    return uuid;
 }
